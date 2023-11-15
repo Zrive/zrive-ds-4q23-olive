@@ -154,5 +154,5 @@ cython_debug/
 
 data/
 .DS_Store
-src/Dataset/muestreos_parcelas.parquet
 poetry.lock
+src/EDA_Parcels/muestreos_parcelas.parquet
