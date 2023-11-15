@@ -153,3 +153,6 @@ dmypy.json
 cython_debug/
 
 data/
+.DS_Store
+src/Dataset/muestreos_parcelas.parquet
+poetry.lock
