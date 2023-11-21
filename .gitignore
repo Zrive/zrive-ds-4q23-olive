@@ -156,3 +156,8 @@ data/
 .DS_Store
 poetry.lock
 src/EDA_Parcels/muestreos_parcelas.parquet
+src/EDA_Parcels/api_data.json
+src/EDA_Parcels/EDA_estados_fenologicos.ipynb
+src/EDA_Parcels/EDA_PROVINCIAS.ipynb
+src/EDA_Parcels/EDA_estados_fenologicos.ipynb
+src/EDA_Parcels/test_download.ipynb
