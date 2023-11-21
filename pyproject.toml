@@ -17,6 +17,7 @@ flake8 = "^6.1.0"
 mypy = "^1.5.1"
 pytest = "^7.4.0"
 terracatalogueclient = { file = "wheels/terracatalogueclient-0.1.16-py3-none-any.whl" }
+utm = "^0.7.0"
 
 
 
