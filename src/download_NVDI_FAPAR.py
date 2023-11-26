@@ -105,7 +105,7 @@ def download_variable_parcela(variable:str,
     return df
 
 
-data_folder = "data"
+data_folder = "data/raw"
 
 output_data_folder_name = "NVDI_FAPAR_data"
 

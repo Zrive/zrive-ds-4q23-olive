@@ -6,12 +6,12 @@ import pandas as pd
 from datetime import datetime
 
 
-def get_days_of_month(year, month):
+def get_days_of_month(year:str, month:str):
     _, days_in_month = calendar.monthrange(int(year), int(month))
     return [str(day) for day in range(1, days_in_month + 1)]
 
 
-data_folder = "data"
+data_folder = "data/raw"
 
 output_data_folder_name = "other_variables_data"
 
