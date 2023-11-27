@@ -5,7 +5,7 @@
 This repository contains meteorological data relevant to the project, featuring seven primary variables:
 
 1. **NVDI (Normalized Difference Vegetation Index):** Measures vegetation density.
-2. **FAPAR (Fraction of Photosynthetically Active Radiation Absorbed by the Vegetation):** Describes the fraction of solar radiation absorbed by plants.
+2. **FAPAR (Fraction of Photosynthetically Active Radiation Absorbed by the Vegetation):** It is fraction of the incoming solar radiation in the photosynthetically active radiation spectral region that is absorbed by a photosynthetic organism, typically describing the light absorption across an integrated plant canopy.
 3. **Volumetric soil water layer 1:** Volume of water in soil layer 1 (0 - 7 cm).
 4. **Total precipitation:** Cumulative precipitation.
 5. **Soil temperature layer 1:** Temperature of the soil in layer 1 (0 - 7 cm).
@@ -16,5 +16,5 @@ This repository contains meteorological data relevant to the project, featuring 
 
 The data variables have been sourced from two distinct channels:
 
-1. **CLMS (Copernicus Land Monitoring System):** NVDI and FAPAR values were extracted for each smallholding via an API, utilizing smallholding positions (latitude and longitude), along with the first and last sample dates. The temporal resolution is 10 days, and the data have been stored in .csv format.
+1. **CLMS (Copernicus Land Monitoring System):** NVDI and FAPAR values were extracted for each smallholding via an API, using smallholding positions (latitude and longitude), along with the first and last sample dates. The temporal resolution is 10 days, and the data have been stored in .csv format.
 2. **ERA5-Land:** The remaining variables were extracted for an area covering Andalusia from 2006 to 2021 with hourly resolution, and the data have been stored in NetCDF4 format.
