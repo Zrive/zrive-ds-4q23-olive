@@ -156,7 +156,7 @@ data/
 .DS_Store
 poetry.lock
 
-src/EDA_Parcelas_Dataset/test_download.ipynb
-src/EDA_Parcelas_Dataset/muestreos_parcelas.parquet
-src/EDA_Parcelas_Dataset/EDA_PROVINCIAS.ipynb
-src/EDA_Parcelas_Dataset/api_data.json
+notebooks/test_download.ipynb
+notebooks/muestreos_parcelas.parquet
+notebooks/EDA_PROVINCIAS.ipynb
+notebooks/api_data.json
