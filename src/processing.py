@@ -1,7 +1,5 @@
 import pandas as pd
 
-df = pd.read_parquet("muestreos_parcelas.parquet")
-
 estados = [
     "estado_fenologico_1",
     "estado_fenologico_2",
@@ -16,8 +14,12 @@ estados = [
     "estado_fenologico_11",
     "estado_fenologico_12",
     "estado_fenologico_13",
-    "estado_fenologico_14",
-]
+    "estado_fenologico_14"]
+
+def load_dataset():
+    df = pd.read_parquet("notebooks/subset_muestreos_parcelas.parquet")
+    return df
+
 
 def find_estado_with_value_two(row) -> int:
     """
@@ -67,8 +69,25 @@ def get_valid_dataset(df: pd.DataFrame(), max_days_till_next_date: int) -> pd.Da
     # Filtering the max days
     df = df[df["days_until_next_visit"] < max_days_till_next_date]
 
-    excluded_columns = ['estado_actual','count_2s', 'next_date']
+    excluded_columns = ['count_2s', 'next_date']
 
     return df.loc[:, [i for i in df.columns if i not in excluded_columns]]
 
 
+def build_spine() -> pd.DataFrame():
+    """
+    Returns a spine with the field name, date and next estado
+    """
+
+    df = load_dataset()
+    columns_needed = estados + ['codparcela', 'fecha']
+    df = get_valid_dataset(df[columns_needed], 30)
+    
+    return df['codparcela','fecha','next_estado']
+
+
+def build_features_parcela() -> pd.DataFrame():
+    """
+    Returns a dataset with the features for each field.
+    """
+    pass

@@ -160,3 +160,4 @@ notebooks/test_download.ipynb
 notebooks/muestreos_parcelas.parquet
 notebooks/EDA_PROVINCIAS.ipynb
 notebooks/api_data.json
+notebooks/subset_muestreos_parcelas.parquet
