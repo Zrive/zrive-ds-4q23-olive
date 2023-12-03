@@ -86,7 +86,19 @@ def build_spine() -> pd.DataFrame():
     return df['codparcela','fecha','next_estado']
 
 
-def build_features_parcela() -> pd.DataFrame():
+def build_numeric_features_parcela(df: pd.DataFrame) -> pd.DataFrame():
+    """
+    Returns a dataset with the features for each field.
+    """
+    pass
+
+def build_binary_features_parcela() -> pd.DataFrame():
+    """
+    Returns a dataset with the features for each field.
+    """
+    pass
+
+def build_categorical_features_parcela() -> pd.DataFrame():
     """
     Returns a dataset with the features for each field.
     """
