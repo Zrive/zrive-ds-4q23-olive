@@ -77,12 +77,12 @@ def get_valid_dataset(df: pd.DataFrame(), max_days_till_next_date: int) -> pd.Da
 
 def build_spine() -> pd.DataFrame():
     """
-    Returns a spine with the field name, date and next estado
+    Returns a spine with the field name, date and next estado, current estados
     """
 
     df = load_dataset()
     
-    return df['codparcela','fecha','next_estado']
+    return df[['codparcela','fecha','next_estado']+ estados]
 
 
 def build_numeric_features_parcela(spine: pd.DataFrame) -> pd.DataFrame():
