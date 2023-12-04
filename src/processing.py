@@ -19,6 +19,7 @@ estados = [
 
 def load_dataset():
     df = pd.read_parquet("notebooks/subset_muestreos_parcelas.parquet")
+    df = get_valid_dataset(df,32)
     return df
 
 
@@ -80,8 +81,6 @@ def build_spine() -> pd.DataFrame():
     """
 
     df = load_dataset()
-    columns_needed = estados + ['codparcela', 'fecha']
-    df = get_valid_dataset(df[columns_needed], 30)
     
     return df['codparcela','fecha','next_estado']
 
@@ -102,7 +101,6 @@ def build_numeric_features_parcela(spine: pd.DataFrame) -> pd.DataFrame():
     'porcentaje_floracion']
 
     df = load_dataset()
-    df = get_valid_dataset(df,32)
     df_parcelas = df.groupby(by='codparcela')[numeric_features].first() #Selects first non-empty entry for each feature
 
     def replace_nullwithmean_remove_outliers(df, threshold = np.inf):
@@ -139,7 +137,55 @@ def build_binary_features_parcela(spine: pd.DataFrame) -> pd.DataFrame():
     """
     Returns a dataset with the features for each field.
     """
-    pass
+    #We don't use 214_cultivo_asociado/otro_aprovechamiento, '209_riego:_calidad_del_agua'
+
+    binary_features = [
+    '211_utilización_de_cubierta_vegetal',
+    '208_riego:_procedencia_del_agua',
+    '207_riego:_sistema_usual_de_riego',
+    '109_sistema_para_el_cumplimiento_gestión_integrada']
+
+    #Grouped By Parcel
+    df = load_dataset()
+    df_parcelas = df.groupby(by='codparcela')[binary_features].first()
+
+
+    #For now replacing null with 0 and the rest to a binay 1 or 0
+    replace_dict = {'Si': 1, 'No': 0, 'NO': 0,'SI':1}
+    df_parcelas["211_utilización_de_cubierta_vegetal"] = df_parcelas["211_utilización_de_cubierta_vegetal"].replace(replace_dict).fillna(0)
+    df_parcelas["211_utilización_de_cubierta_vegetal"].astype(int, inplace=True)
+
+    replace_dict_riego = {'Pozo': 1, 'POZO': 1}
+
+    def apply_dict(row, replace_dict):
+        """
+        If the key is in the dict it uses the value of the dict, if not it returns 0
+        """
+        if row in replace_dict.keys():
+            return replace_dict[row]
+        else:
+            return 0
+
+    df_parcelas['208_riego:_procedencia_del_agua'] = df_parcelas['208_riego:_procedencia_del_agua'].astype('str').apply(apply_dict, replace_dict=replace_dict_riego).fillna(0)
+    df_parcelas['208_riego:_procedencia_del_agua'].astype(int, inplace=True)
+
+    dict_replace_rieg= {}
+    for i in df_parcelas['207_riego:_sistema_usual_de_riego'].str.lower().unique():
+        if pd.isna(i):
+            continue
+        if "got" in i:
+            dict_replace_rieg[i] = 1
+        else: dict_replace_rieg[i] = 0
+    
+    df_parcelas['207_riego:_sistema_usual_de_riego'] = df_parcelas['207_riego:_sistema_usual_de_riego'].apply(apply_dict, replace_dict=dict_replace_rieg).fillna(0)
+    df_parcelas['207_riego:_sistema_usual_de_riego'].astype(int, inplace=True)
+
+    replace_dict_gest = {'Producción Integrada (PI)': 1}
+    df_parcelas['109_sistema_para_el_cumplimiento_gestión_integrada'] = df_parcelas['109_sistema_para_el_cumplimiento_gestión_integrada'].apply(apply_dict, replace_dict=replace_dict_gest).fillna(0)
+    df_parcelas['109_sistema_para_el_cumplimiento_gestión_integrada'].astype(int, inplace=True)
+
+    return pd.merge(spine, df_parcelas, left_on='codparcela',right_index=True, how='left')
+
 
 def build_categorical_features_parcela(spine: pd.DataFrame) -> pd.DataFrame():
     """
