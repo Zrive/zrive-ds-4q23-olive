@@ -163,3 +163,5 @@ src/preprocessing_numeric.ipynb
 pyproject.toml
 poetry.lock
 notebooks/subset_muestreos_parcelas.parquet
+src/subset_muestreos_parcelas.parquet
+src/test.ipynb
