@@ -243,6 +243,9 @@ def build_binary_features_parcela(spine: pd.DataFrame) -> pd.DataFrame():
 
 
 def build_date_variables_parcelas(spine: pd.DataFrame) -> pd.DataFrame():
+    """
+    Returns a dataset with the date relevant features for each field.
+    """
     df = load_dataset()
     relevant_cols = estados + ["codparcela", "fecha"]
     df = df[relevant_cols]
