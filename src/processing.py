@@ -208,7 +208,7 @@ def build_binary_features_parcela(spine: pd.DataFrame) -> pd.DataFrame():
     df = load_dataset()
     df_parcelas = df.groupby(by="codparcela")[binary_features].first()
 
-    # For now replacing null with 0 and the rest to a binay 1 or 0
+    # Building dictionaries to replace values
     dict_replace_riego = {}  # Solo 1s para las que ponga algo sobre goteo
     for i in df_parcelas["207_riego:_sistema_usual_de_riego"].str.lower().unique():
         if pd.isna(i):
@@ -222,6 +222,7 @@ def build_binary_features_parcela(spine: pd.DataFrame) -> pd.DataFrame():
     replace_dict_agua = {"Pozo": 1, "POZO": 1}  # Solo 1 para pozos
     replace_dict_gest = {"Producción Integrada (PI)": 1}  # Solo 1 para PI
 
+    #Cleaning all 4 binary features
     df_parcelas["211_utilización_de_cubierta_vegetal"] = convert_to_binary(
         df_parcelas["211_utilización_de_cubierta_vegetal"], replace_dict_veg
     )
