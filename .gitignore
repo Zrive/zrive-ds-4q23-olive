@@ -146,6 +146,10 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
+#poetry
+poetry.lock
+
+
 # pytype static type analyzer
 .pytype/
 
