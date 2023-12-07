@@ -38,10 +38,7 @@ DATA = {
 }
 
 
-"""def test_calculate_stats_for_week():
-    """
-    Unnecessary test, but I just wanted to make sure
-    """
+def test_calculate_stats_for_week():
     df_one_week = pd.DataFrame(DATA)
     df_one_week.set_index("date", inplace=True)
 
@@ -61,7 +58,7 @@ DATA = {
         ), f"Stat {key} is incorrect. Expected: {value}, and got: {results[key]}"
 
     print("\n\033[92mTest for one week data passed!\033[0m\n\n")
-"""
+
 
 def test_calculate_parcela_weekly_statistics():
     test_date = pd.Timestamp("2017-03-10 00:00:00")
