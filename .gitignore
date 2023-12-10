@@ -157,3 +157,11 @@ dmypy.json
 cython_debug/
 
 data/
+.DS_Store
+src/preprocessing_numeric.ipynb
+.gitignore
+pyproject.toml
+poetry.lock
+notebooks/subset_muestreos_parcelas.parquet
+src/subset_muestreos_parcelas.parquet
+src/test.ipynb

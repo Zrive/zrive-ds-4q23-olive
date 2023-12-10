@@ -5,6 +5,7 @@ import requests
 import time
 import utm
 from typing import Tuple
+import numpy as np
 
 
 logger = logging.getLogger(__name__)
@@ -14,6 +15,7 @@ logger.level = logging.INFO
 def utm_to_latlon(x_utm: float, y_utm: float) -> Tuple[float, float]:
     try:
         lat, lon = utm.to_latlon(x_utm, y_utm, 30, "S")
+
     except:  # noqa: E722
         lat, lon = -9999999, -9999999
 
@@ -115,6 +117,7 @@ def request_with_cooloff(api_url: str, payload: str, num_attempts: int):
     # We got through the loop without error so we've received a valid response
     return response
 
+
 def replace_nullwithmean_remove_outliers(
     df: pd.DataFrame(), threshold=np.inf, is_int=True
 ) -> pd.DataFrame():
@@ -126,4 +129,5 @@ def replace_nullwithmean_remove_outliers(
         df = df.astype("int32")
     else:
         df = df.astype("float32")
+
     return df
