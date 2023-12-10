@@ -1,4 +1,5 @@
 import logging
+import numpy as np
 import pandas as pd
 import requests
 import time
@@ -113,3 +114,16 @@ def request_with_cooloff(api_url: str, payload: str, num_attempts: int):
 
     # We got through the loop without error so we've received a valid response
     return response
+
+def replace_nullwithmean_remove_outliers(
+    df: pd.DataFrame(), threshold=np.inf, is_int=True
+) -> pd.DataFrame():
+    df = df.copy()
+    mean_value = df.mean()
+    df.fillna(mean_value, inplace=True)
+    df.loc[df > threshold] = mean_value
+    if is_int:
+        df = df.astype("int32")
+    else:
+        df = df.astype("float32")
+    return df
