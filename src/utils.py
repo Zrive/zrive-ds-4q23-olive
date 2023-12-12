@@ -5,7 +5,6 @@ import requests
 import time
 import utm
 from typing import Tuple
-import numpy as np
 
 
 logger = logging.getLogger(__name__)

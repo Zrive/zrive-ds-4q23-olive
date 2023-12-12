@@ -4,14 +4,19 @@ import pandas as pd
 from datetime import timedelta
 
 
-
 main_data_folder = "data"
 meteo_data_folder = f"{main_data_folder}/clean/final"
 
 
+output_data_folder = f"{main_data_folder}/clean/meteo_variables"
+
+if not os.path.exists(output_data_folder):
+    os.makedirs(output_data_folder)
+
+
 VARIABLES = ["stl1", "tp", "swvl1", "u10", "v10", "ssr", "value_ndvi", "value_fapar"]
 
-OPERATIONS = ["min", "max", "mean", "std"]
+OPERATIONS = ["min", "max", "mean", "median", "std"]
 
 METEO_COLUMNS = [
     f"{variable}_{operation}" for variable in VARIABLES for operation in OPERATIONS
@@ -20,14 +25,30 @@ METEO_COLUMNS = [
 N_WEEKS = 4
 
 
-def group_days_in_weeks(x):
+def assign_week_number(x):
+    """It assigns a week number based on number of days
+
+    Parameters:
+    x (int): Number of days
+
+    Returns:
+    int: Week number (1 if day = 1-7, 2 if day = 8-14, etc...)
+
+    """
     return 1 if x == 0 else math.ceil(x - 1) // 7 + 1
 
 
-
-
-
 def read_raw_meteo_data(codparcela: str) -> pd.DataFrame:
+    """It reads unprocessed meteorological data based on codparcela (smallholding ID)
+
+    Parameters:
+    codparcela (str): smallholding ID
+
+    Returns:
+    df_meteo_parcela (pd.DataFrame): Dataframe containing unprocessed
+    meteorological values
+
+    """
     file_path = f"{meteo_data_folder}/{codparcela}.csv"
 
     if not os.path.exists(file_path):
@@ -42,7 +63,26 @@ def read_raw_meteo_data(codparcela: str) -> pd.DataFrame:
     return df_meteo_parcela
 
 
-def group_meteo_data_row(fecha_muestra: pd.DataFrame, df_meteo_parcela: pd.DataFrame):
+def compute_time_window_stats(
+    fecha_muestra: pd.Timestamp, df_meteo_parcela: pd.DataFrame
+):
+    """It creates "processed" meteorological variables for every sample.
+    Based on sample date, the function extracts data prior to N_WEEKS
+    and compute values of min, max, mean, median and std
+
+    Parameters:
+    fecha_muestra (pd.Timestamp): Sample date
+
+    df_meteo_parcela (pd.DataFrame): Dataframe containing unprocessed
+    meteorological values
+
+    Returns:
+    df_meteo_variables_per_week (pd.DataFrame): Dataframe containing
+    values of min, max, mean, median and std for every meteorological
+    variable grouped by weeks
+
+    """
+
     fecha_end_slice = fecha_muestra - timedelta(7 * N_WEEKS)
 
     df_meteo_sample = df_meteo_parcela[
@@ -55,71 +95,111 @@ def group_meteo_data_row(fecha_muestra: pd.DataFrame, df_meteo_parcela: pd.DataF
     ).dt.days
 
     df_meteo_sample["weeks"] = df_meteo_sample["diff_days_sample"].apply(
-        group_days_in_weeks
+        assign_week_number
     )  # , args=(n_weeks,))
 
-    df_meteo_raw_grouped = df_meteo_sample.groupby("weeks")[VARIABLES].agg(OPERATIONS)
+    df_meteo_variables_per_week = df_meteo_sample.groupby("weeks")[VARIABLES].agg(
+        OPERATIONS
+    )  # tem
 
-    df_meteo_raw_grouped.columns = METEO_COLUMNS
+    df_meteo_variables_per_week.columns = METEO_COLUMNS
 
-    return df_meteo_raw_grouped
+    return df_meteo_variables_per_week
 
 
-def get_meteo_variables_row(
-    id_codparcela: str, fecha_muestra: pd.Timestamp, df_meteo_raw_grouped: pd.DataFrame
+def flatten_meteo_variables(
+    id_codparcela: str,
+    fecha_muestra: pd.Timestamp,
+    df_meteo_variables_per_week: pd.DataFrame,
 ):
-    n_rows, n_column = df_meteo_raw_grouped.shape
+    """It flattens the previous dataframe, grouping all the weekly
+    variables in one row, and naming the columns with the format
+    {variable}_{operation}_{n_week} (E.g. stl1_min_1). Also, it
+    adds smallholding ID and sample date as spine
 
-    flat_values = df_meteo_raw_grouped.values.reshape(n_rows * n_column)
+    Parameters:
+    fecha_muestra (pd.Timestamp): Sample date
+
+    df_meteo_variables_per_week (pd.DataFrame): Dataframe containing
+    values of min, max, mean, median and std for every meteorological
+    variable grouped by weeks
+
+    Returns:
+    df_meteo_variables_flattened (pd.DataFrame): Dataframe containing
+    values of min, max, mean, median and std for every meteorological
+    variable in one row
+
+    """
+
+    n_rows, n_column = df_meteo_variables_per_week.shape
+
+    flat_values = df_meteo_variables_per_week.values.reshape(n_rows * n_column)
 
     resultados_columns = [
         f"{column}_{i}"
         for i in range(1, n_rows + 1)
-        for column in df_meteo_raw_grouped.columns
+        for column in df_meteo_variables_per_week.columns
     ]
 
-    df_meteo_proccessed = pd.DataFrame([flat_values], columns=resultados_columns)
+    df_meteo_variables_flattened = pd.DataFrame(
+        [flat_values], columns=resultados_columns
+    )
 
-    df_meteo_proccessed["codparcela"] = id_codparcela
-    df_meteo_proccessed["fecha"] = fecha_muestra
+    df_meteo_variables_flattened["codparcela"] = id_codparcela
+    df_meteo_variables_flattened["fecha"] = fecha_muestra
 
-    df_meteo_proccessed.insert(0, "codparcela", df_meteo_proccessed.pop("codparcela"))
-    df_meteo_proccessed.insert(1, "fecha", df_meteo_proccessed.pop("fecha"))
+    df_meteo_variables_flattened.insert(
+        0, "codparcela", df_meteo_variables_flattened.pop("codparcela")
+    )
+    df_meteo_variables_flattened.insert(
+        1, "fecha", df_meteo_variables_flattened.pop("fecha")
+    )
 
-    return df_meteo_proccessed
+    return df_meteo_variables_flattened
 
 
 def get_meteo_variables_parcela(
     df_subsamples: pd.DataFrame, df_meteo_parcela: pd.DataFrame
 ):
-    df_concat_meteo_variables_parcela = pd.DataFrame()
+    """It gets meteorological variables per smallholding for every sample
 
-    for _, row in df_subsamples.iterrows():
-        fecha_muestra = row["fecha"]
+    Parameters:
+    df_subsamples (pd.DataFrame): Dataframe containing every sample for
+    a specific smallholding
 
-        id_codparcela = row["codparcela"]
+    df_meteo_parcela (pd.DataFrame): Dataframe containing unprocessed
+    meteorological values
 
-        df_meteo_raw_grouped = group_meteo_data_row(fecha_muestra, df_meteo_parcela)
+    Returns:
+    df_meteo_variables_parcela (pd.DataFrame): Dataframe containing
+    values of min, max, mean, median and std for every meteorological
+    variable for every sample in smallholding
 
-        df_meteo_proccessed = get_meteo_variables_row(
-            id_codparcela, fecha_muestra, df_meteo_raw_grouped
+    """
+    df_meteo_variables_parcela = pd.DataFrame()
+
+    for _, sample in df_subsamples.iterrows():
+        fecha_muestra = sample["fecha"]
+
+        id_codparcela = sample["codparcela"]
+
+        df_meteo_variables_per_week = compute_time_window_stats(
+            fecha_muestra, df_meteo_parcela
         )
 
-        if df_concat_meteo_variables_parcela.empty:
-            df_concat_meteo_variables_parcela = df_meteo_proccessed.copy()
-        else:
-            df_concat_meteo_variables_parcela = pd.concat(
-                [df_concat_meteo_variables_parcela, df_meteo_proccessed],
-                axis=0,
-                ignore_index=True,
-                keys=["df_concat_meteo_variables_parcela", "df_meteo_proccessed"],
-            )
+        df_meteo_variables_flattened = flatten_meteo_variables(
+            id_codparcela, fecha_muestra, df_meteo_variables_per_week
+        )
 
-    return df_concat_meteo_variables_parcela
+        df_meteo_variables_parcela = pd.concat(
+            [df_meteo_variables_parcela, df_meteo_variables_flattened],
+            ignore_index=True,
+        )
+
+    return df_meteo_variables_parcela
 
 
 def main():
-
     sample_filename = "subset_muestreos_parcelas.parquet"
 
     df_samples = pd.read_parquet(f"{main_data_folder}/{sample_filename}")
@@ -128,10 +208,7 @@ def main():
 
     df_samples["codparcela"] = df_samples["codparcela"].str.replace("/", "")
 
-
     codparcelas = df_samples["codparcela"].unique()
-
-    df_meteo_variables_parcela_total = pd.DataFrame()
 
     for _, codparcela in enumerate(codparcelas):
         df_subsamples_parcela = df_samples[df_samples["codparcela"] == codparcela]
@@ -142,20 +219,31 @@ def main():
             df_subsamples_parcela, df_meteo_parcela
         )
 
-        if df_meteo_variables_parcela.empty:
-            df_meteo_variables_parcela_total = df_meteo_variables_parcela.copy()
-        else:
-            df_meteo_variables_parcela_total = pd.concat(
-                [df_meteo_variables_parcela_total, df_meteo_variables_parcela],
-                axis=0,
-                ignore_index=True,
-                keys=["df_meteo_variables_parcela_total", "df_meteo_variables_parcela"],
-            )
+        # Stores all the proccesed data per smallholding
 
-        df_meteo_variables_parcela_total.to_parquet(
+        df_meteo_variables_parcela.to_parquet(
+            f"{output_data_folder}/{codparcela}.parquet"
+        )
+
+    # Joins all the data in one parquet
+
+    parquet_files = os.listdir(output_data_folder)
+
+    df_meteo_variables_final = pd.DataFrame()
+
+    for _, file in enumerate(parquet_files):
+        df_parcela = pd.read_parquet(f"{output_data_folder}/{file}")
+
+        df_meteo_variables_final = pd.concat(
+            [df_meteo_variables_final, df_parcela],
+            axis=0,
+            ignore_index=True,
+            keys=["df_meteo_variables_final", "df_parcela"],
+        )
+
+        df_meteo_variables_final.to_parquet(
             f"{main_data_folder}/meteo_variables_dataset.parquet"
         )
-    
 
 
 if __name__ == "__main__":
