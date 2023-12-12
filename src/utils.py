@@ -1,10 +1,10 @@
 import logging
+import numpy as np
 import pandas as pd
 import requests
 import time
 import utm
 from typing import Tuple
-import numpy as np
 
 
 logger = logging.getLogger(__name__)
@@ -14,7 +14,8 @@ logger.level = logging.INFO
 def utm_to_latlon(x_utm: float, y_utm: float) -> Tuple[float, float]:
     try:
         lat, lon = utm.to_latlon(x_utm, y_utm, 30, "S")
-    except:
+
+    except:  # noqa: E722
         lat, lon = -9999999, -9999999
 
     return pd.Series([lat, lon], index=["lat", "lon"])
@@ -127,4 +128,5 @@ def replace_nullwithmean_remove_outliers(
         df = df.astype("int32")
     else:
         df = df.astype("float32")
+
     return df
