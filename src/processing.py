@@ -57,6 +57,7 @@ def keep_valid_estados(df: pd.DataFrame()) -> pd.DataFrame():
     df = df[df.count_2s == 1]
     return df
 
+
 def find_next_estado(row, days_till_next_visit):
     """
     Keeps iterating through the observations until it finds if there are any non null ones for the days_till_next_visit time frame.
@@ -74,6 +75,7 @@ def find_next_estado(row, days_till_next_visit):
     except:
         raise Exception("Next estado not found")
 
+
 def obtain_next_estados(df: pd.DataFrame, days_till_next_visit: int) -> pd.DataFrame:
     """
     Returns a dataset with the new y.
@@ -81,13 +83,19 @@ def obtain_next_estados(df: pd.DataFrame, days_till_next_visit: int) -> pd.DataF
     # Creating a column to display the current growth stage
     df["estado_actual"] = df[estados].apply(find_estado_with_value_two, axis=1)
 
-    for i in range(1,days_till_next_visit):
-        df[f'next_date_{i}'] = df.groupby('codparcela')['fecha'].shift(-i)
-        df[f"next_estado_{i}"] = df.groupby("codparcela", observed=True)["estado_actual"].shift(-i)
-    
-    #Next estado
-    df['next_estado'] = df.apply(find_next_estado, axis=1, days_till_next_visit=days_till_next_visit)
-    cols_to_remove = [f'next_date_{i}' for i in range(1, days_till_next_visit)] + [f'next_estado_{i}' for i in range(1, days_till_next_visit)]
+    for i in range(1, days_till_next_visit):
+        df[f"next_date_{i}"] = df.groupby("codparcela")["fecha"].shift(-i)
+        df[f"next_estado_{i}"] = df.groupby("codparcela", observed=True)[
+            "estado_actual"
+        ].shift(-i)
+
+    # Next estado
+    df["next_estado"] = df.apply(
+        find_next_estado, axis=1, days_till_next_visit=days_till_next_visit
+    )
+    cols_to_remove = [f"next_date_{i}" for i in range(1, days_till_next_visit)] + [
+        f"next_estado_{i}" for i in range(1, days_till_next_visit)
+    ]
     df = df.drop(columns=cols_to_remove)
 
     # Removing parcels with null y values.
@@ -97,7 +105,7 @@ def obtain_next_estados(df: pd.DataFrame, days_till_next_visit: int) -> pd.DataF
 
 
 def get_valid_dataset(
-    df: pd.DataFrame(), days_till_next_visit= 14, y_relative=True
+    df: pd.DataFrame(), days_till_next_visit=14, y_relative=True
 ) -> pd.DataFrame():
     """
     Filters dataset by number of days and removes irrelevant rows
