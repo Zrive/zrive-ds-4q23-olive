@@ -26,7 +26,7 @@ def load_dataset() -> pd.DataFrame():
     Loads and shrinks dataset
     """
     df = pd.read_parquet("subset_muestreos_parcelas.parquet")
-    df = get_valid_dataset(df, 32)
+    df = get_valid_dataset(df)
     return df
 
 
@@ -57,9 +57,47 @@ def keep_valid_estados(df: pd.DataFrame()) -> pd.DataFrame():
     df = df[df.count_2s == 1]
     return df
 
+def find_next_estado(row, days_till_next_visit):
+    """
+    Keeps iterating through the observations until it finds if there are any non null ones for the days_till_next_visit time frame.
+    """
+    try:
+        days = (row["next_date_1"] - row["fecha"]).days
+        i = 1
+        while days < days_till_next_visit - 1:
+            i += 1
+            days += (row[f"next_date_{i}"] - row[f"next_date_{i-1}"]).days
+        if days <= days_till_next_visit + 1:
+            return row[f"next_estado_{i}"]
+        else:
+            return np.nan
+    except:
+        raise Exception("Next estado not found")
+
+def obtain_next_estados(df: pd.DataFrame, days_till_next_visit: int) -> pd.DataFrame:
+    """
+    Returns a dataset with the new y.
+    """
+    # Creating a column to display the current growth stage
+    df["estado_actual"] = df[estados].apply(find_estado_with_value_two, axis=1)
+
+    for i in range(1,days_till_next_visit):
+        df[f'next_date_{i}'] = df.groupby('codparcela')['fecha'].shift(-i)
+        df[f"next_estado_{i}"] = df.groupby("codparcela", observed=True)["estado_actual"].shift(-i)
+    
+    #Next estado
+    df['next_estado'] = df.apply(find_next_estado, axis=1, days_till_next_visit=days_till_next_visit)
+    cols_to_remove = [f'next_date_{i}' for i in range(1, days_till_next_visit)] + [f'next_estado_{i}' for i in range(1, days_till_next_visit)]
+    df = df.drop(columns=cols_to_remove)
+
+    # Removing parcels with null y values.
+    df = df.dropna(subset=["next_estado"])
+
+    return df
+
 
 def get_valid_dataset(
-    df: pd.DataFrame(), max_days_till_next_date: int, y_relative=True
+    df: pd.DataFrame(), days_till_next_visit= 14, y_relative=True
 ) -> pd.DataFrame():
     """
     Filters dataset by number of days and removes irrelevant rows
@@ -70,23 +108,12 @@ def get_valid_dataset(
     df["fecha"] = pd.to_datetime(df["fecha"])
     df.sort_values(by="fecha", inplace=True)
 
-    # Creating a column to display the number of days till the next observation
-    df["next_date"] = df.groupby("codparcela", observed=True)["fecha"].shift(-1)
-    df["days_until_next_visit"] = (df["next_date"] - df["fecha"]).dt.days
-
-    # Creating a column to display the next estado_fenológico (yt+1)
-    df["estado_actual"] = df[estados].apply(find_estado_with_value_two, axis=1)
-    df["next_estado"] = df.groupby("codparcela", observed=True)["estado_actual"].shift(
-        -1
-    )
+    df = obtain_next_estados(df, days_till_next_visit)
 
     if y_relative:
         df["next_y"] = df["next_estado"] - df["estado_actual"]
     else:
         df["next_y"] = df["next_estado"]
-
-    # Removing the parcels with only one entry and the last entry for every parcel
-    df = df.dropna(subset=["days_until_next_visit"])  # 5150 entries removed
 
     # Removing entries where estado decreases
     mask_estado_decrease = df["next_estado"] - df["estado_actual"] < 0
@@ -95,9 +122,6 @@ def get_valid_dataset(
     # Changing datatypes
     df["next_y"] = df["next_y"].astype("int8")
     df[estados] = df[estados].astype("int8")
-
-    # Filtering the max days
-    df = df[df["days_until_next_visit"] < max_days_till_next_date]
 
     excluded_columns = [
         "count_2s",

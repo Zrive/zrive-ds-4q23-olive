@@ -165,3 +165,4 @@ poetry.lock
 notebooks/subset_muestreos_parcelas.parquet
 src/subset_muestreos_parcelas.parquet
 src/test.ipynb
+src/test_2.ipynb
