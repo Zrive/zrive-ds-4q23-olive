@@ -12,6 +12,7 @@ build/
 develop-eggs/
 dist/
 downloads/
+data/
 eggs/
 .eggs/
 lib/
@@ -31,6 +32,10 @@ MANIFEST
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
 *.spec
+*.parquet
+*.zip
+*.txt
+*.tsv
 
 # Installer logs
 pip-log.txt
@@ -155,9 +160,15 @@ cython_debug/
 data/
 .DS_Store
 poetry.lock
-
 notebooks/test_download.ipynb
 notebooks/muestreos_parcelas.parquet
 notebooks/EDA_PROVINCIAS.ipynb
 notebooks/api_data.json
 notebooks/subset_muestreos_parcelas.parquet
+src/preprocessing_numeric.ipynb
+.gitignore
+pyproject.toml
+poetry.lock
+notebooks/subset_muestreos_parcelas.parquet
+src/subset_muestreos_parcelas.parquet
+src/test.ipynb
