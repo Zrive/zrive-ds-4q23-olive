@@ -41,6 +41,9 @@ def train_test_val_split(
 
     return train_df, val_df, test_df
 
+def load_climatic_features() -> pd.DataFrame:
+    df = pd.read_parquet("meteo_dataset_list_range_40_100.parquet")
+    return df
 
 def drop_id_features(df: pd.DataFrame) -> pd.DataFrame:
     df = df.drop(columns=["fecha", "codparcela"])
@@ -55,7 +58,10 @@ def build_dataset_with_features(
     date_parcela_features=True,
     climate_features=True,
 ):
-    spine = build_spine()
+    if climate_features:
+        spine = load_climatic_features()
+    else:
+        spine = build_spine()
 
     if numeric_features:
         df = build_numeric_features_parcela(spine)
@@ -68,9 +74,6 @@ def build_dataset_with_features(
 
     if date_parcela_features:
         df = build_date_variables_parcelas(df)
-
-    if climate_features:
-        pass
 
     return df
 
