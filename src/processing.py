@@ -62,7 +62,7 @@ def obtain_next_estado(
     df: pd.DataFrame, days_till_next_sample: int, spam: int
 ) -> pd.DataFrame:
     """
-    Returns a dataset with the new y.
+    Returns a dataset with the growth stage at y(t+ n_days).
     """
     # Creating a column to display the current growth stage
     df["estado_actual"] = df[estados].apply(find_estado_with_value_two, axis=1)
