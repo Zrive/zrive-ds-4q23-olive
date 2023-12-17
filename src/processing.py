@@ -50,7 +50,7 @@ def keep_valid_estados(df: pd.DataFrame()) -> pd.DataFrame():
         subset=["codparcela", "fecha"], keep="first"
     )  # Drop 5k duplicates
 
-    df[estados] = df[estados].fillna(0)
+    df[estados] = df[estados].fillna(0).astype("int8")
 
     # Filtering Dataset to keep rows only with one unique 2
     df["count_2s"] = df[estados].eq(2).sum(axis=1)
@@ -58,45 +58,35 @@ def keep_valid_estados(df: pd.DataFrame()) -> pd.DataFrame():
     return df
 
 
-def find_next_estado(row, days_till_next_visit):
-    """
-    Keeps iterating through the observations until it finds if there are any non null ones for the days_till_next_visit time frame.
-    """
-    try:
-        days = (row["next_date_1"] - row["fecha"]).days
-        i = 1
-        while days < days_till_next_visit - 1:
-            i += 1
-            days += (row[f"next_date_{i}"] - row[f"next_date_{i-1}"]).days
-        if days <= days_till_next_visit + 1:
-            return row[f"next_estado_{i}"]
-        else:
-            return np.nan
-    except:
-        raise Exception("Next estado not found")
-
-
-def obtain_next_estados(df: pd.DataFrame, days_till_next_visit: int) -> pd.DataFrame:
+def obtain_next_estado(
+    df: pd.DataFrame, days_till_next_sample: int, spam: int
+) -> pd.DataFrame:
     """
     Returns a dataset with the new y.
     """
     # Creating a column to display the current growth stage
     df["estado_actual"] = df[estados].apply(find_estado_with_value_two, axis=1)
+    df.set_index("fecha", inplace=True)
 
-    for i in range(1, days_till_next_visit):
-        df[f"next_date_{i}"] = df.groupby("codparcela")["fecha"].shift(-i)
-        df[f"next_estado_{i}"] = df.groupby("codparcela", observed=True)[
-            "estado_actual"
-        ].shift(-i)
+    for i in range(days_till_next_sample - spam, days_till_next_sample + spam + 1):
+        df[f"next_estado_{i}"] = df.groupby("codparcela")["estado_actual"].transform(
+            lambda x: x.shift(-i, freq="D")
+        )
 
     # Next estado
-    df["next_estado"] = df.apply(
-        find_next_estado, axis=1, days_till_next_visit=days_till_next_visit
-    )
-    cols_to_remove = [f"next_date_{i}" for i in range(1, days_till_next_visit)] + [
-        f"next_estado_{i}" for i in range(1, days_till_next_visit)
+    df = df.reset_index()
+    estados_to_check = [
+        f"next_estado_{i}"
+        for i in range(days_till_next_sample - spam, days_till_next_sample + spam + 1)
     ]
-    df = df.drop(columns=cols_to_remove)
+    df["next_estado"] = df.loc[:, estados_to_check].apply(
+        lambda x: x[x.first_valid_index()]
+        if x.first_valid_index() is not None
+        else None,
+        axis=1,
+    )
+
+    df = df.drop(columns=estados_to_check)
 
     # Removing parcels with null y values.
     df = df.dropna(subset=["next_estado"])
@@ -105,7 +95,7 @@ def obtain_next_estados(df: pd.DataFrame, days_till_next_visit: int) -> pd.DataF
 
 
 def get_valid_dataset(
-    df: pd.DataFrame(), days_till_next_visit=14, y_relative=True
+    df: pd.DataFrame(), days_till_next_sample=14, spam=1, y_relative=True
 ) -> pd.DataFrame():
     """
     Filters dataset by number of days and removes irrelevant rows
@@ -116,7 +106,7 @@ def get_valid_dataset(
     df["fecha"] = pd.to_datetime(df["fecha"])
     df.sort_values(by="fecha", inplace=True)
 
-    df = obtain_next_estados(df, days_till_next_visit)
+    df = obtain_next_estado(df, days_till_next_sample, spam)
 
     if y_relative:
         df["next_y"] = df["next_estado"] - df["estado_actual"]
@@ -129,14 +119,11 @@ def get_valid_dataset(
 
     # Changing datatypes
     df["next_y"] = df["next_y"].astype("int8")
-    df[estados] = df[estados].astype("int8")
 
     excluded_columns = [
         "count_2s",
-        "next_date",
         "next_estado",
         "estado_actual",
-        "days_until_next_visit",
     ]
 
     return df.loc[:, [i for i in df.columns if i not in excluded_columns]]

@@ -41,9 +41,11 @@ def train_test_val_split(
 
     return train_df, val_df, test_df
 
+
 def load_climatic_features() -> pd.DataFrame:
     df = pd.read_parquet("meteo_dataset_list_range_40_100.parquet")
     return df
+
 
 def drop_id_features(df: pd.DataFrame) -> pd.DataFrame:
     df = df.drop(columns=["fecha", "codparcela"])
