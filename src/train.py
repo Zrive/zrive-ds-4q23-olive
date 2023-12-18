@@ -61,12 +61,16 @@ def build_dataset_with_features(
     climate_features=True,
 ):
     if climate_features:
-        spine = load_climatic_features()
-    else:
+        climate_features = load_climatic_features()
+        climate_features.dropna(inplace=True)
         spine = build_spine()
+        df = pd.merge(climate_features, spine, on=["codparcela", "fecha"], how="left")
+        df.dropna(subset="next_y", inplace=True)
+    else:
+        df = build_spine()
 
     if numeric_features:
-        df = build_numeric_features_parcela(spine)
+        df = build_numeric_features_parcela(df)
 
     if categorical_features:
         df = build_categorical_features_parcela(df)

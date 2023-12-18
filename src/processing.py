@@ -246,6 +246,28 @@ def build_binary_features_parcela(spine: pd.DataFrame()) -> pd.DataFrame():
         spine, df_parcelas, left_on="codparcela", right_index=True, how="left"
     )
 
+def build_days_in_current_stage() -> pd.DataFrame():
+
+    df = pd.read_parquet("subset_muestreos_parcelas.parquet")
+    df = keep_valid_estados(df)
+    df["estado_actual"] = df[estados].apply(find_estado_with_value_two, axis=1)
+    df = df[["codparcela", "fecha", "estado_actual"]]
+
+    # Sorting by date
+    df["fecha"] = pd.to_datetime(df["fecha"])
+    df.sort_values(by="fecha", inplace=True)
+
+    df['prev_estado'] = df.groupby('codparcela')['estado_actual'].shift(1)
+    df['prev_fecha'] = df.groupby('codparcela')['fecha'].shift(1)
+
+    # Calculate the number of days for each row
+    df['number_days_current_estado'] = (df['fecha'] - df['prev_fecha']).dt.days * (df['estado_actual'] == df['prev_estado'])
+    df['number_days_current_estado'].fillna(0, inplace=True)
+    df['number_days_current_estado'] = df['number_days_current_estado'].astype('int8')
+
+
+    return df.drop(columns=["prev_estado","prev_fecha","estado_actual"])
+
 
 def build_date_variables_parcelas(spine: pd.DataFrame()) -> pd.DataFrame():
     """
@@ -254,6 +276,8 @@ def build_date_variables_parcelas(spine: pd.DataFrame()) -> pd.DataFrame():
     df = load_dataset()
     relevant_cols = estados + ["codparcela", "fecha"]
     df = df[relevant_cols]
+    df_days_current_estado = build_days_in_current_stage()
+    df = pd.merge(df, df_days_current_estado, on=["codparcela", "fecha"], how="left")
 
     return pd.merge(spine, df, on=["codparcela", "fecha"], how="left")
 
