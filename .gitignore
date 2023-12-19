@@ -172,3 +172,5 @@ poetry.lock
 notebooks/subset_muestreos_parcelas.parquet
 src/subset_muestreos_parcelas.parquet
 src/test.ipynb
+src/test_2.ipynb
+src/meteo_dataset_list_range_40_100.parquet
