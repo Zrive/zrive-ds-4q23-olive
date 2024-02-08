@@ -247,6 +247,9 @@ def build_binary_features_parcela(spine: pd.DataFrame()) -> pd.DataFrame():
     )
 
 def build_days_in_current_stage() -> pd.DataFrame():
+    """
+    Builds the number of days in the current growth-stage. (e.g. 0 if it just changed, the cumulative sum of days between overvations otherwise)
+    """
 
     df = pd.read_parquet("subset_muestreos_parcelas.parquet")
     df = keep_valid_estados(df)
