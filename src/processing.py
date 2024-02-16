@@ -26,7 +26,7 @@ def load_dataset() -> pd.DataFrame():
     Loads and shrinks dataset
     """
     df = pd.read_parquet("subset_muestreos_parcelas.parquet")
-    df = get_valid_dataset(df, 32)
+    df = get_valid_dataset(df)
     return df
 
 
@@ -50,7 +50,7 @@ def keep_valid_estados(df: pd.DataFrame()) -> pd.DataFrame():
         subset=["codparcela", "fecha"], keep="first"
     )  # Drop 5k duplicates
 
-    df[estados] = df[estados].fillna(0)
+    df[estados] = df[estados].fillna(0).astype("int8")
 
     # Filtering Dataset to keep rows only with one unique 2
     df["count_2s"] = df[estados].eq(2).sum(axis=1)
@@ -58,8 +58,44 @@ def keep_valid_estados(df: pd.DataFrame()) -> pd.DataFrame():
     return df
 
 
+def obtain_next_estado(
+    df: pd.DataFrame, days_till_next_sample: int, spam: int
+) -> pd.DataFrame:
+    """
+    Returns a dataset with the growth stage at y(t+ n_days).
+    """
+    # Creating a column to display the current growth stage
+    df["estado_actual"] = df[estados].apply(find_estado_with_value_two, axis=1)
+    df.set_index("fecha", inplace=True)
+
+    for i in range(days_till_next_sample - spam, days_till_next_sample + spam + 1):
+        df[f"next_estado_{i}"] = df.groupby("codparcela")["estado_actual"].transform(
+            lambda x: x.shift(-i, freq="D")
+        )
+
+    # Next estado
+    df = df.reset_index()
+    estados_to_check = [
+        f"next_estado_{i}"
+        for i in range(days_till_next_sample - spam, days_till_next_sample + spam + 1)
+    ]
+    df["next_estado"] = df.loc[:, estados_to_check].apply(
+        lambda x: x[x.first_valid_index()]
+        if x.first_valid_index() is not None
+        else None,
+        axis=1,
+    )
+
+    df = df.drop(columns=estados_to_check)
+
+    # Removing parcels with null y values.
+    df = df.dropna(subset=["next_estado"])
+
+    return df
+
+
 def get_valid_dataset(
-    df: pd.DataFrame(), max_days_till_next_date: int, y_relative=True
+    df: pd.DataFrame(), days_till_next_sample=14, spam=1, y_relative=True
 ) -> pd.DataFrame():
     """
     Filters dataset by number of days and removes irrelevant rows
@@ -70,23 +106,12 @@ def get_valid_dataset(
     df["fecha"] = pd.to_datetime(df["fecha"])
     df.sort_values(by="fecha", inplace=True)
 
-    # Creating a column to display the number of days till the next observation
-    df["next_date"] = df.groupby("codparcela", observed=True)["fecha"].shift(-1)
-    df["days_until_next_visit"] = (df["next_date"] - df["fecha"]).dt.days
-
-    # Creating a column to display the next estado_fenológico (yt+1)
-    df["estado_actual"] = df[estados].apply(find_estado_with_value_two, axis=1)
-    df["next_estado"] = df.groupby("codparcela", observed=True)["estado_actual"].shift(
-        -1
-    )
+    df = obtain_next_estado(df, days_till_next_sample, spam)
 
     if y_relative:
         df["next_y"] = df["next_estado"] - df["estado_actual"]
     else:
         df["next_y"] = df["next_estado"]
-
-    # Removing the parcels with only one entry and the last entry for every parcel
-    df = df.dropna(subset=["days_until_next_visit"])  # 5150 entries removed
 
     # Removing entries where estado decreases
     mask_estado_decrease = df["next_estado"] - df["estado_actual"] < 0
@@ -94,17 +119,11 @@ def get_valid_dataset(
 
     # Changing datatypes
     df["next_y"] = df["next_y"].astype("int8")
-    df[estados] = df[estados].astype("int8")
-
-    # Filtering the max days
-    df = df[df["days_until_next_visit"] < max_days_till_next_date]
 
     excluded_columns = [
         "count_2s",
-        "next_date",
         "next_estado",
         "estado_actual",
-        "days_until_next_visit",
     ]
 
     return df.loc[:, [i for i in df.columns if i not in excluded_columns]]
@@ -227,6 +246,31 @@ def build_binary_features_parcela(spine: pd.DataFrame()) -> pd.DataFrame():
         spine, df_parcelas, left_on="codparcela", right_index=True, how="left"
     )
 
+def build_days_in_current_stage() -> pd.DataFrame():
+    """
+    Builds the number of days in the current growth-stage. (e.g. 0 if it just changed, the cumulative sum of days between overvations otherwise)
+    """
+
+    df = pd.read_parquet("subset_muestreos_parcelas.parquet")
+    df = keep_valid_estados(df)
+    df["estado_actual"] = df[estados].apply(find_estado_with_value_two, axis=1)
+    df = df[["codparcela", "fecha", "estado_actual"]]
+
+    # Sorting by date
+    df["fecha"] = pd.to_datetime(df["fecha"])
+    df.sort_values(by="fecha", inplace=True)
+
+    df['prev_estado'] = df.groupby('codparcela')['estado_actual'].shift(1)
+    df['prev_fecha'] = df.groupby('codparcela')['fecha'].shift(1)
+
+    # Calculate the number of days for each row
+    df['number_days_current_estado'] = (df['fecha'] - df['prev_fecha']).dt.days * (df['estado_actual'] == df['prev_estado'])
+    df['number_days_current_estado'].fillna(0, inplace=True)
+    df['number_days_current_estado'] = df['number_days_current_estado'].astype('int8')
+
+
+    return df.drop(columns=["prev_estado","prev_fecha","estado_actual"])
+
 
 def build_date_variables_parcelas(spine: pd.DataFrame()) -> pd.DataFrame():
     """
@@ -235,6 +279,8 @@ def build_date_variables_parcelas(spine: pd.DataFrame()) -> pd.DataFrame():
     df = load_dataset()
     relevant_cols = estados + ["codparcela", "fecha"]
     df = df[relevant_cols]
+    df_days_current_estado = build_days_in_current_stage()
+    df = pd.merge(df, df_days_current_estado, on=["codparcela", "fecha"], how="left")
 
     return pd.merge(spine, df, on=["codparcela", "fecha"], how="left")
 
